@@ -13,3 +13,11 @@ class Reserva {
         $stmt->execute($datos);
     }
 }
+
+
+
+// app/models/Reserva.php (Método adicional)
+    public function cambiarEstado($id_reserva, $cliente_id, $nuevo_estado) {
+        $stmt = $this->db->prepare("UPDATE reservas SET estado = :estado WHERE id = :id AND cliente_id = :cliente_id");
+        $stmt->execute([':estado' => $nuevo_estado, ':id' => $id_reserva, ':cliente_id' => $cliente_id]);
+    }
