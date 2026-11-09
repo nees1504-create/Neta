@@ -18,3 +18,17 @@ class CotizacionController {
         }
     }
 }
+
+
+
+
+// app/controllers/CotizacionController.php (Método adicional)
+    public function gestionar($id) {
+        $modelo = new Cotizacion();
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $margen = $_POST['margen'];
+            $total = $modelo->calcularTotal($_POST['servicios'], $margen);
+            $modelo->actualizarTotal($id, $total);
+            header("Location: /cotizaciones/lista");
+        }
+    }
