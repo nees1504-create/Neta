@@ -36,3 +36,21 @@ class ReservaController {
         $modelo->cambiarEstado($id, $_SESSION['id_usuario'], 'cancelada');
         header("Location: /reservas/mis_reservas");
     }
+
+
+
+
+
+// app/controllers/ReservaController.php (Método adicional para Agente)
+    public function gestionarAgente() {
+        $modelo = new Reserva();
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id = $_POST['reserva_id'];
+            $estado = $_POST['nuevo_estado']; // ej: 'confirmada'
+            $modelo->cambiarEstadoAgente($id, $estado);
+            header("Location: /reservas/gestionar");
+        }
+    }
+
+
+
