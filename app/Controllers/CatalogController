@@ -1,0 +1,53 @@
+<?php
+namespace App\Controllers;
+use App\Core\Controller; use App\Core\Database; use App\Models\PackageService; use App\Models\Availability;
+
+/**
+ * CU-04 Consultar catálogo de paquetes (detalle con servicios incluidos; sin sesión)
+ * CU-05 Buscar y filtrar destinos (destino, fecha, precio, tipo de viaje)
+ */
+class CatalogController extends Controller {
+    /** CU-04: ficha pública de un paquete con precio y servicios incluidos. */
+    public function detail(): void {
+        $s = Database::connection()->prepare("SELECT * FROM packages WHERE id=? AND status='Activo'");
+        $s->execute([(int)($_GET['id'] ?? 0)]);
+        $package = $s->fetch();
+        if (!$package) { \flash('error', 'El paquete solicitado no existe o no está disponible.'); \redirect('catalog'); }
+        $this->render('public/package-detail', ['package' => $package, 'services' => (new PackageService())->forPackage((int)$package['id'], true)]);
+    }
+
+    /** CU-05: catálogo con filtros combinables. */
+    public function search(): void {
+        $db = Database::connection();
+        $f = [
+            'destination' => trim($_GET['destination'] ?? ''),
+            'category'    => trim($_GET['category'] ?? ''),
+            'currency'    => in_array($_GET['currency'] ?? '', ['BOB', 'USD', 'EUR'], true) ? $_GET['currency'] : '',
+            'price_min'   => ($_GET['price_min'] ?? '') !== '' ? max(0, (float)$_GET['price_min']) : null,
+            'price_max'   => ($_GET['price_max'] ?? '') !== '' ? max(0, (float)$_GET['price_max']) : null,
+            'travel_date' => trim($_GET['travel_date'] ?? ''),
+            'passengers'  => max(1, min(20, (int)($_GET['passengers'] ?? 1))),
+        ];
+        $dateOk = $f['travel_date'] !== '' && ($d = \DateTime::createFromFormat('Y-m-d', $f['travel_date'])) && $d->format('Y-m-d') === $f['travel_date'] && $f['travel_date'] >= date('Y-m-d');
+        if ($f['travel_date'] !== '' && !$dateOk) { \flash('error', 'La fecha indicada no es válida; se ignoró en la búsqueda.'); $f['travel_date'] = ''; }
+
+        $where = ["status='Activo'"]; $args = [];
+        if ($f['destination'] !== '') { $where[] = '(destination LIKE ? OR name LIKE ?)'; $args[] = '%' . $f['destination'] . '%'; $args[] = '%' . $f['destination'] . '%'; }
+        if ($f['category'] !== '')    { $where[] = 'category=?'; $args[] = $f['category']; }
+        if ($f['currency'] !== '')    { $where[] = 'currency=?'; $args[] = $f['currency']; }
+        if ($f['price_min'] !== null) { $where[] = 'price>=?'; $args[] = $f['price_min']; }
+        if ($f['price_max'] !== null) { $where[] = 'price<=?'; $args[] = $f['price_max']; }
+        $s = $db->prepare('SELECT * FROM packages WHERE ' . implode(' AND ', $where) . ' ORDER BY name');
+        $s->execute($args);
+        $packages = $s->fetchAll();
+
+        // Filtro por fecha: se conservan solo los paquetes con plazas libres ese día.
+        if ($f['travel_date'] !== '') {
+            $packages = array_values(array_filter($packages, function ($p) use ($f) {
+                try { Availability::check($p, $f['travel_date'], $f['passengers']); return true; } catch (\RuntimeException $e) { return false; }
+            }));
+        }
+        $categories = $db->query("SELECT DISTINCT category FROM packages WHERE status='Activo' ORDER BY category")->fetchAll(\PDO::FETCH_COLUMN);
+        $this->render('public/catalog-search', ['packages' => $packages, 'filters' => $f, 'categories' => $categories]);
+    }
+}
