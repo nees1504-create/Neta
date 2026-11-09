@@ -16,3 +16,16 @@ class Destino {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }
+
+
+// app/models/Destino.php
+class Destino {
+    private $db;
+    public function __construct() {
+        $this->db = new PDO('mysql:host=localhost;dbname=neta_db', 'user', 'pass');
+    }
+    public function crear($datos) {
+        $stmt = $this->db->prepare("INSERT INTO destinos (nombre, pais, precio_base) VALUES (:nombre, :pais, :precio)");
+        $stmt->execute($datos);
+    }
+}
