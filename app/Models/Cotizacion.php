@@ -9,3 +9,16 @@ class Cotizacion {
         $stmt->execute($datos);
     }
 }
+
+
+
+
+// app/models/Cotizacion.php (Método adicional)
+    public function calcularTotal($servicios, $margen) {
+        $costo_base = array_sum(array_column($servicios, 'precio'));
+        return $costo_base + ($costo_base * ($margen / 100));
+    }
+    public function actualizarTotal($id, $total) {
+        $stmt = $this->db->prepare("UPDATE cotizaciones SET total = :total, estado = 'enviada' WHERE id = :id");
+        $stmt->execute([':total' => $total, ':id' => $id]);
+    }
