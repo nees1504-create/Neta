@@ -25,3 +25,14 @@ class ReservaController {
         }
     }
 }
+
+
+
+// app/controllers/ReservaController.php (Método adicional)
+    public function cancelar($id) {
+        session_start();
+        $modelo = new Reserva();
+        // Verificar que la reserva pertenezca al usuario
+        $modelo->cambiarEstado($id, $_SESSION['id_usuario'], 'cancelada');
+        header("Location: /reservas/mis_reservas");
+    }
